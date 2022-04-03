@@ -115,8 +115,11 @@ def init_random(args, bs):
 def get_model_and_buffer(args, device, sample_q):
     model_cls = F if args.uncond else CCF
     f = model_cls(args.depth, args.width, args.norm, dropout_rate=args.dropout_rate, n_classes=args.n_classes)
+    
     ## add distributed support
     f = f.to(device)
+    logger.info(type(f))
+    logger.info(f.classify)
     f = t.nn.parallel.DistributedDataParallel(f, device_ids=[args.local_rank], output_device=args.local_rank)
     if not args.uncond:
         assert args.buffer_size % args.n_classes == 0, "Buffer size must be divisible by args.n_classes"
