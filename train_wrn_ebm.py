@@ -17,9 +17,11 @@ import utils
 import torch as t, torch.nn as nn, torch.nn.functional as tnnF, torch.distributions as tdist
 from torch.utils.data import DataLoader, Dataset
 import torchvision as tv, torchvision.transforms as tr
+from torch.utils.data.distributed import DistributedSampler
 import os
 import sys
 import argparse
+import random
 #import ipdb
 import numpy as np
 import wideresnet
