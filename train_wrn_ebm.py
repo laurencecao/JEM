@@ -229,7 +229,7 @@ def get_sample_q(args, device):
         buffer_samples = replay_buffer[inds]
         random_samples = init_random(args, bs)
         choose_random = (t.rand(bs) < args.reinit_freq).float()[:, None, None, None]
-        samples = choose_random * random_samples + (1 - choose_random) * buffer_samples
+        samples = choose_random * random_samples + (1 - choose_random) * buffer_samples.cpu()
         return samples.to(device), inds
 
     def sample_q(f, replay_buffer, y=None, n_steps=args.n_steps):
@@ -242,6 +242,8 @@ def get_sample_q(args, device):
         # generate initial samples and buffer inds of those samples (if buffer is used)
         init_sample, buffer_inds = sample_p_0(replay_buffer, bs=bs, y=y)
         x_k = t.autograd.Variable(init_sample, requires_grad=True)
+        x_k = x_k.cuda()
+        y = y.cuda() if not y == None else y
         # sgld
         for k in range(n_steps):
             f_prime = t.autograd.grad(f(x_k, y=y).sum(), [x_k], retain_graph=True)[0]
