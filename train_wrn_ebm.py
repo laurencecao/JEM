@@ -120,7 +120,7 @@ def get_model_and_buffer(args, device, sample_q):
     f = f.to(device)
     logger.info(type(f))
     logger.info(f.classify)
-    f = t.nn.parallel.DistributedDataParallel(f, device_ids=[args.local_rank], output_device=args.local_rank)
+    f = t.nn.parallel.DistributedDataParallel(f, device_ids=[args.local_rank], output_device=args.local_rank, find_unused_parameters=True)
     if not args.uncond:
         assert args.buffer_size % args.n_classes == 0, "Buffer size must be divisible by args.n_classes"
     if args.load_path is None:
