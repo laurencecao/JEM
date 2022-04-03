@@ -129,6 +129,7 @@ def get_model_and_buffer(args, device, sample_q, local_rank=0):
         replay_buffer = ckpt_dict["replay_buffer"]
 
     f = f.to(device)
+    replay_buffer = replay_buffer.to(device)
     return f, replay_buffer
 
 
