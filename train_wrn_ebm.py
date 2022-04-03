@@ -247,8 +247,6 @@ def get_sample_q(args, device):
         y = y.cuda() if not y == None else y
         # sgld
         for k in range(n_steps):
-            print(x_k)
-            print(y)
             f_prime = t.autograd.grad(f(x_k, y=y).sum(), [x_k], retain_graph=True)[0]
             x_k.data += args.sgld_lr * f_prime + args.sgld_std * t.randn_like(x_k)
         f.train()
