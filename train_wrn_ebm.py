@@ -28,6 +28,7 @@ import wideresnet
 import json
 # Sampling
 from tqdm import tqdm
+from loguru import logger
 t.backends.cudnn.benchmark = True
 t.backends.cudnn.enabled = True
 t.backends.cudnn.deterministic = True
@@ -111,12 +112,12 @@ def init_random(args, bs):
     return t.FloatTensor(bs, n_ch, im_sz, im_sz).uniform_(-1, 1)
 
 
-def get_model_and_buffer(args, device, sample_q, local_rank=0):
+def get_model_and_buffer(args, device, sample_q):
     model_cls = F if args.uncond else CCF
     f = model_cls(args.depth, args.width, args.norm, dropout_rate=args.dropout_rate, n_classes=args.n_classes)
     ## add distributed support
     f = f.to(device)
-    f = t.nn.parallel.DistributedDataParallel(f, device_ids=[local_rank], output_device=local_rank)
+    f = t.nn.parallel.DistributedDataParallel(f, device_ids=[args.local_rank], output_device=args.local_rank)
     if not args.uncond:
         assert args.buffer_size % args.n_classes == 0, "Buffer size must be divisible by args.n_classes"
     if args.load_path is None:
@@ -246,6 +247,8 @@ def get_sample_q(args, device):
         y = y.cuda() if not y == None else y
         # sgld
         for k in range(n_steps):
+            print(x_k)
+            print(y)
             f_prime = t.autograd.grad(f(x_k, y=y).sum(), [x_k], retain_graph=True)[0]
             x_k.data += args.sgld_lr * f_prime + args.sgld_std * t.randn_like(x_k)
         f.train()
@@ -253,7 +256,7 @@ def get_sample_q(args, device):
         # update replay buffer
         if len(replay_buffer) > 0:
             replay_buffer[buffer_inds] = final_samples.cpu()
-        return final_samples
+        return final_samples.to(device)
     return sample_q
 
 
@@ -292,7 +295,7 @@ def main(args):
     if t.cuda.is_available():
         t.cuda.manual_seed_all(seed)
         
-    t.distributed.init_process_group(backend="nccl")
+    t.distributed.init_process_group(backend="nccl", rank=args.local_rank)
 
     # datasets
     dload_train, dload_train_labeled, dload_valid, dload_test = get_data(args)
