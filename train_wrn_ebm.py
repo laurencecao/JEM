@@ -28,11 +28,13 @@ import json
 from tqdm import tqdm
 t.backends.cudnn.benchmark = True
 t.backends.cudnn.enabled = True
-seed = 1
+t.backends.cudnn.deterministic = True
+seed = 42
 im_sz = 32
 n_ch = 3
-
-
+np.random.seed(seed)
+random.seed(seed)
+t.manual_seed(seed)  
 
 class DataSubset(Dataset):
     def __init__(self, base_dataset, inds=None, size=-1):
@@ -107,9 +109,11 @@ def init_random(args, bs):
     return t.FloatTensor(bs, n_ch, im_sz, im_sz).uniform_(-1, 1)
 
 
-def get_model_and_buffer(args, device, sample_q):
+def get_model_and_buffer(args, device, sample_q, local_rank=0):
     model_cls = F if args.uncond else CCF
     f = model_cls(args.depth, args.width, args.norm, dropout_rate=args.dropout_rate, n_classes=args.n_classes)
+    ## add distributed support
+    f = t.nn.parallel.DistributedDataParallel(f, device_ids=[local_rank], output_device=local_rank)
     if not args.uncond:
         assert args.buffer_size % args.n_classes == 0, "Buffer size must be divisible by args.n_classes"
     if args.load_path is None:
@@ -184,14 +188,23 @@ def get_data(args):
     dset_train = DataSubset(
         dataset_fn(True, transform_train),
         inds=train_inds)
+    # changed to distributed support
+    dset_sampler = DistributedSampler(dataset=dset_train)
+    
     dset_train_labeled = DataSubset(
         dataset_fn(True, transform_train),
         inds=train_labeled_inds)
+    # changed to distributed support
+    dset_labeled_sampler = DistributedSampler(dataset=dset_train_labeled)
+    
     dset_valid = DataSubset(
         dataset_fn(True, transform_test),
         inds=valid_inds)
-    dload_train = DataLoader(dset_train, batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=True)
-    dload_train_labeled = DataLoader(dset_train_labeled, batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=True)
+    
+    # changed to distributed support
+    dload_train = DataLoader(dset_train, batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=True, sampler=dset_sampler)
+    dload_train_labeled = DataLoader(dset_train_labeled, batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=True, sampler=dset_labeled_sampler)
+    
     dload_train_labeled = cycle(dload_train_labeled)
     dset_test = dataset_fn(False, transform_test)
     dload_valid = DataLoader(dset_valid, batch_size=100, shuffle=False, num_workers=4, drop_last=False)
@@ -272,6 +285,8 @@ def main(args):
     t.manual_seed(seed)
     if t.cuda.is_available():
         t.cuda.manual_seed_all(seed)
+        
+    t.distributed.init_process_group(backend="nccl")
 
     # datasets
     dload_train, dload_train_labeled, dload_valid, dload_test = get_data(args)
@@ -394,10 +409,9 @@ def main(args):
             f.train()
         checkpoint(f, replay_buffer, "last_ckpt.pt", args, device)
 
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Energy Based Models and Shit")
+    parser.add_argument("--local_rank", type=int, help="Local rank. Necessary for using the torch.distributed.launch utility.")
     parser.add_argument("--dataset", type=str, default="cifar10", choices=["cifar10", "svhn", "cifar100"])
     parser.add_argument("--data_root", type=str, default="../data")
     # optimization
@@ -453,3 +467,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     args.n_classes = 100 if args.dataset == "cifar100" else 10
     main(args)
+    '''
+    python -m torch.distributed.launch --nproc_per_node=2 --nnodes=1 --node_rank=0 --master_addr="10.0.2.160" --master_port=1234 train_wrn_ebm.py
+    '''
