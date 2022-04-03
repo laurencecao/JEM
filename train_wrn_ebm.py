@@ -204,8 +204,8 @@ def get_data(args):
         inds=valid_inds)
     
     # changed to distributed support
-    dload_train = DataLoader(dset_train, batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=True, sampler=dset_sampler)
-    dload_train_labeled = DataLoader(dset_train_labeled, batch_size=args.batch_size, shuffle=True, num_workers=4, drop_last=True, sampler=dset_labeled_sampler)
+    dload_train = DataLoader(dset_train, batch_size=args.batch_size, shuffle=False, num_workers=4, drop_last=True, sampler=dset_sampler)
+    dload_train_labeled = DataLoader(dset_train_labeled, batch_size=args.batch_size, shuffle=False, num_workers=4, drop_last=True, sampler=dset_labeled_sampler)
     
     dload_train_labeled = cycle(dload_train_labeled)
     dset_test = dataset_fn(False, transform_test)
