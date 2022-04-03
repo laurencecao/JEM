@@ -293,7 +293,9 @@ def main(args):
     # datasets
     dload_train, dload_train_labeled, dload_valid, dload_test = get_data(args)
 
-    device = t.device('cuda' if t.cuda.is_available() else 'cpu')
+    # device = t.device('cuda' if t.cuda.is_available() else 'cpu')
+    device = torch.device("cuda:{}".format(local_rank))
+    print("Using device: ", device)
 
     sample_q = get_sample_q(args, device)
     f, replay_buffer = get_model_and_buffer(args, device, sample_q)
@@ -468,6 +470,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     args.n_classes = 100 if args.dataset == "cifar100" else 10
+    
+    print("CUDA available: ", t.cuda.is_available())
     main(args)
     '''
     python -m torch.distributed.launch --nproc_per_node=2 --nnodes=1 --node_rank=0 --master_addr="10.0.2.160" --master_port=1234 train_wrn_ebm.py
