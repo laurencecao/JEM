@@ -121,8 +121,6 @@ def get_model_and_buffer(args, device, sample_q):
     logger.info(type(f))
     logger.info(f.classify)
     f = t.nn.parallel.DistributedDataParallel(f, device_ids=[args.local_rank], output_device=args.local_rank)
-    logger.info(type(f))
-    logger.info(f.classify)
     if not args.uncond:
         assert args.buffer_size % args.n_classes == 0, "Buffer size must be divisible by args.n_classes"
     if args.load_path is None:
@@ -267,7 +265,7 @@ def eval_classification(f, dload, device):
     corrects, losses = [], []
     for x_p_d, y_p_d in dload:
         x_p_d, y_p_d = x_p_d.to(device), y_p_d.to(device)
-        logits = f.classify(x_p_d)
+        logits = f.module.classify(x_p_d)
         loss = nn.CrossEntropyLoss(reduce=False)(logits, y_p_d).cpu().numpy()
         losses.extend(loss)
         correct = (logits.max(1)[1] == y_p_d).float().cpu().numpy()
@@ -361,7 +359,7 @@ def main(args):
                 L += args.p_x_weight * l_p_x
 
             if args.p_y_given_x_weight > 0:  # maximize log p(y | x)
-                logits = f.classify(x_lab)
+                logits = f.module.classify(x_lab)
                 l_p_y_given_x = nn.CrossEntropyLoss()(logits, y_lab)
                 if cur_iter % args.print_every == 0:
                     acc = (logits.max(1)[1] == y_lab).float().mean()
