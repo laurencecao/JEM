@@ -294,7 +294,8 @@ def main(args):
     # datasets
     dload_train, dload_train_labeled, dload_valid, dload_test = get_data(args)
 
-    device = t.device('cuda' if t.cuda.is_available() else 'cpu')
+    # device = t.device('cuda' if t.cuda.is_available() else 'cpu')
+    device = t.device("cuda:{}".format(args.local_rank))
     print("Using device: ", device)
 
     sample_q = get_sample_q(args, device)
