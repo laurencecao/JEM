@@ -130,7 +130,7 @@ def get_model_and_buffer(args, device, sample_q):
         replay_buffer = ckpt_dict["replay_buffer"]
 
     f = f.to(device)
-    replay_buffer = replay_buffer.to(device)
+    replay_buffer = replay_buffer
     return f, replay_buffer
 
 
@@ -243,8 +243,8 @@ def get_sample_q(args, device):
         # generate initial samples and buffer inds of those samples (if buffer is used)
         init_sample, buffer_inds = sample_p_0(replay_buffer, bs=bs, y=y)
         x_k = t.autograd.Variable(init_sample, requires_grad=True)
-        x_k = x_k.cuda()
-        y = y.cuda() if not y == None else y
+        # x_k = x_k.cuda()
+        # y = y.cuda() if not y == None else y
         # sgld
         for k in range(n_steps):
             f_prime = t.autograd.grad(f(x_k, y=y).sum(), [x_k], retain_graph=True)[0]
@@ -254,7 +254,7 @@ def get_sample_q(args, device):
         # update replay buffer
         if len(replay_buffer) > 0:
             replay_buffer[buffer_inds] = final_samples.cpu()
-        return final_samples.to(device)
+        return final_samples #.to(device)
     return sample_q
 
 
@@ -273,7 +273,7 @@ def eval_classification(f, dload, device):
 
 
 def checkpoint(f, buffer, tag, args, device):
-    # f.cpu()
+    f.cpu()
     ckpt_dict = {
         "model_state_dict": f.state_dict(),
         "replay_buffer": buffer
@@ -331,11 +331,9 @@ def main(args):
                 for param_group in optim.param_groups:
                     param_group['lr'] = lr
 
-            # x_p_d = x_p_d.to(device)
-            x_p_d = x_p_d.cuda()
+            x_p_d = x_p_d.to(device)
             x_lab, y_lab = dload_train_labeled.__next__()
-            # x_lab, y_lab = x_lab.to(device), y_lab.to(device)
-            x_lab, y_lab = x_lab.cuda(), y_lab.cuda()
+            x_lab, y_lab = x_lab.to(device), y_lab.to(device)
 
             L = 0.
             if args.p_x_weight > 0:  # maximize log p(x)
