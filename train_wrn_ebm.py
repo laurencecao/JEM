@@ -285,6 +285,8 @@ def checkpoint(f, buffer, tag, args, device):
 
 
 def main(args):
+    logger.remove()
+    logger.add(f'output_{args.local_rank}.log', mode="w")
     utils.makedirs(args.save_dir)
     with open(f'{args.save_dir}/params.txt', 'w') as f:
         json.dump(args.__dict__, f)
