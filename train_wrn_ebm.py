@@ -269,7 +269,7 @@ def eval_classification(f, dload, device):
 
 
 def checkpoint(f, buffer, tag, args, device):
-    f.cpu()
+    # f.cpu()
     ckpt_dict = {
         "model_state_dict": f.state_dict(),
         "replay_buffer": buffer
@@ -325,9 +325,11 @@ def main(args):
                 for param_group in optim.param_groups:
                     param_group['lr'] = lr
 
-            x_p_d = x_p_d.to(device)
+            # x_p_d = x_p_d.to(device)
+            x_p_d = x_p_d.cuda()
             x_lab, y_lab = dload_train_labeled.__next__()
-            x_lab, y_lab = x_lab.to(device), y_lab.to(device)
+            # x_lab, y_lab = x_lab.to(device), y_lab.to(device)
+            x_lab, y_lab = x_lab.cuda(), y_lab.cuda()
 
             L = 0.
             if args.p_x_weight > 0:  # maximize log p(x)
